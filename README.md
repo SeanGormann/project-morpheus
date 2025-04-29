@@ -3,9 +3,13 @@ Repo for morpheus collab
 
 ### Repo Structure
 
+```
 .
 ├── README.md
 ├── components
+│   ├── data      ### Placholder for data collection ideas
+│   │   |-- files...
+│   │   └── README.md
 │   ├── reader
 │   │   |-- files...
 │   │   └── README.md
@@ -14,7 +18,7 @@ Repo for morpheus collab
 │       └── README.md
 ├── main.py
 └── pyproject.toml
-
+```
 
 Additional documents for the major components can be found in the components dir.
 
@@ -39,5 +43,7 @@ Writer
     - Write noise level
     - Write intervals
     - Write etc.
+
+
 
 
