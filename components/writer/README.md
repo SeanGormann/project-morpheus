@@ -48,3 +48,120 @@ It's not fucking electrocuting your brain for one. There's evidence to support i
 ### References
 
 - Helfrich, R. F., et al. **Local and distributed fMRI changes induced by 40 Hz gamma tACS of the bilateral dorsolateral prefrontal cortex: a pilot study.** *Neural Plast.* 2022; PMID: 35880231. [https://pubmed.ncbi.nlm.nih.gov/35880231/](https://pubmed.ncbi.nlm.nih.gov/35880231/)  
+
+
+---
+
+
+# Morpheus Console
+
+Morpheus Console is a Python-based scheduler and audio player for binaural beats, designed to support lucid dreaming induction by entraining brainwaves during sleep.
+
+## Features
+
+* **Timeline UI**: Visualize and schedule playback times between 10:00 PM and 9:00 AM.
+* **Configurable Duration**: Set playback length per event (e.g., 2, 5, or 15 minutes).
+* **Audio Playback**: Uses PyQt5's QMediaPlayer for seamless system audio output.
+* **Automatic Scheduling**: APScheduler triggers events daily at specified times.
+
+## Installation
+
+```bash
+git clone <repo-url>
+cd project-morpheus
+pip install uv
+uv venv
+source .venv/bin/activate
+uv sync
+# Ensure ffmpeg or system audio support is available
+```
+
+May need to:
+
+```bash
+brew install python-tk@3.12 ffmpeg
+```
+
+
+## Usage
+
+```bash
+python src/app.py
+```
+
+1. **Time (HH\:MM):** Enter the hour and minute for playback.
+2. **Duration (min):** Select how many minutes to play the binaural beat.
+3. **Add / Remove:** Schedule or delete events; dots appear on the timeline.
+4. **Play Now:** Test playback immediately at the chosen duration.
+
+---
+
+## Neuroscience Background & Deep Dive
+
+### Lucid Dreaming Brainwaves
+
+Lucid dreaming—becoming aware that you’re dreaming while still asleep—occurs during **REM sleep**, characterized by:
+
+* **Theta (4–7 Hz):** Dominant REM rhythm in hippocampus and cortex supporting memory and dream narrative.
+* **Gamma (30–60 Hz, peak \~40 Hz):** Frontolateral gamma enhancements correlate with self-awareness and cognitive control in dreams.
+* **Reduced Delta (<4 Hz):** Lower slow-wave power compared to non-lucid REM.
+* **Alpha & Beta (8–30 Hz):** Altered coherence and power reflecting modulated cortical communication.
+
+These patterns suggest a reactivation of prefrontal networks—normally offline in REM—enabling metacognition and insight into the dream state.
+
+### Binaural-Beat Entrainment Meta-Analysis
+
+A systematic review (Ingendoh et al., 2023) of 14 EEG/MEG studies evaluated binaural beats (BB) for neural entrainment:
+
+| Frequency Band   | Entrainment Duration | Effectiveness                                   |
+| ---------------- | -------------------- | ----------------------------------------------- |
+| Theta (4–8 Hz)   | 6–10 min             | Reliable theta power ↑                          |
+| Alpha (8–12 Hz)  | \~5 min              | Alpha power ↑                                   |
+| Gamma (30–70 Hz) | \~15 min             | Auditory steady-state responses (ASSR) at 40 Hz |
+| Beta (13–30 Hz)  | —                    | No consistent entrainment                       |
+
+**Optimal Parameters:**
+
+* **Carrier Tones:** \~400 Hz pure tones, no pink noise embedding.
+* **Beat Differences:** ≤30 Hz for clarity; 40 Hz difference still triggers ASSR.
+* **Delivery:** Over-ear or in-ear isolation to each ear.
+
+**Implications:**
+
+* Strongest entrainment occurs in theta and gamma bands—key signatures of lucid REM.
+* Methodological heterogeneity demands standardized protocols for reliable induction.
+
+### Two-Phase Binaural-Beat Protocol for Lucidity
+
+1. **Pre-Sleep Theta Priming:**
+
+   * **Stimulation:** 7 Hz BB (400 vs. 407 Hz) for **6–10 minutes** immediately before lights out.
+   * **Goal:** Bias the brain toward REM-like theta oscillations at sleep onset.
+
+2. **REM Gamma Boost:**
+
+   * **Timing:** After \~90 minutes (first REM cycle).
+   * **Stimulation:** 40 Hz BB (400 vs. 440 Hz) for **15 minutes**.
+   * **Goal:** Amplify frontal gamma rhythms associated with self-reflective awareness.
+
+**Tips:**
+
+* Keep volume low (below arousal threshold).
+* Combine with mnemonic induction (MILD) and reality checks for synergistic effects.
+
+---
+
+## References
+
+* Ingendoh, R. M., Posny, E. S., & Heine, A. (2023). *Binaural beats to entrain the brain?* PLoS One, 18(5)\:e0286023. doi:10.1371/journal.pone.0286023
+* Jirakittayakorn, N., & Wongsawat, Y. (2017). *Brain responses to 40-Hz binaural beat.* Int J Psychophysiol. PMID:28739482
+* Han, C., Zhao, X., Li, M., et al. (2023). *Enhancement of the neural response during 40 Hz auditory entrainment.* Cogn Neurodyn. doi:10.1007/s11571-022-09834-x
+* Helfrich, R. F., et al. (2022). *40 Hz gamma tACS of the DLPFC.* Neural Plast. PMID:35880231
+
+---
+
+## Future Directions
+
+* **Empirical Validation:** Test two-phase BB protocol with high-density EEG and subjective lucidity measures.
+* **Personalization:** Adapt frequencies and durations based on individual EEG responsiveness.
+* **Integration:** Combine BB delivery with sleep-trackers or smart earbuds for closed-loop stimulation.
