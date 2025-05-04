@@ -41,9 +41,11 @@ if __name__ == "__main__":
     theta_in = os.path.join(base_dir, "theta-bb-7hz.mp3")
     gamma_in = os.path.join(base_dir, "gamma-40hz.mp3")
 
-    theta_out = os.path.join(base_dir, "theta-bb-7hz-5min-mid.mp3")
-    gamma_out = os.path.join(base_dir, "gamma-40hz-5min-mid.mp3")
+    #theta_out = os.path.join(base_dir, "theta-bb-7hz-5min-mid.mp3")
+    gamma_out = os.path.join(base_dir, "gamma-40hz-30s-test.mp3")
 
     # Example: 5-minute slice with 5-second fade-in
-    slice_middle(theta_in, theta_out, slice_minutes=5, warmup_seconds=10)
-    slice_middle(gamma_in, gamma_out, slice_minutes=5, warmup_seconds=10)
+    #slice_middle(theta_in, theta_out, slice_minutes=5, warmup_seconds=10)
+    slice_middle(gamma_in, gamma_out, slice_minutes=5, warmup_seconds=2)
+    #print(f"Sliced {theta_in} to {theta_out}")
+    print(f"Sliced {gamma_in} to {gamma_out}")
