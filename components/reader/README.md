@@ -14,7 +14,10 @@ We want to study our sleep patterns to deliver more effective audio prompts to a
 - heart rate variation (REM is typically more variable)
 - Circadian rhythm information and generic sleep patterns - i.e. Deep sleep is more prevalent during early hours of sleep etc.
 
-Options: 
+
+---
+
+### Options: 
 
 | Device | Method | Price  | Subscription | Comment |
 | --- | --- | --- | --- | --- |
@@ -23,5 +26,6 @@ Options:
 | Fitbit Versa  | All Above | Free - Luke has  | €8.99/Month | Luke has 6 month free trial |
 
 
+---
 
 Good youtube video of comparative analysis on devices and how the devices read [research backed](https://www.youtube.com/watch?v=niLuR68YleI&t=254s)
