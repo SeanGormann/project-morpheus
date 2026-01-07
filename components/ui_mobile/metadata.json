@@ -1,0 +1,5 @@
+{
+  "name": "SleepSounds",
+  "description": "A sleep tracking and ambient sound control application designed for better rest.",
+  "requestFramePermissions": []
+}

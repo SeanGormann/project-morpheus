@@ -19,7 +19,7 @@ class AudioPlayer(QObject):
         super().__init__()
         self.player = QMediaPlayer()
         # load your 5-min gamma file
-        path = os.path.join(os.path.dirname(__file__), '..', 'acoustic-data', 'gamma-40hz-30s-test.mp3')  #'gamma-40hz-30s-test.mp3'   'gamma-40hz-5min-mid.mp3'
+        path = os.path.join(os.path.dirname(__file__), '..', 'acoustic-data', 'gamma-40hz-5min-mid.mp3')  #'gamma-40hz-30s-test.mp3'   'gamma-40hz-5min-mid.mp3'
         url = QUrl.fromLocalFile(os.path.abspath(path))
         self.player.setMedia(QMediaContent(url))
         # connect the signals
