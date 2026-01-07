@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   View, 
   Text, 
@@ -6,10 +6,15 @@ import {
   ScrollView, 
   TouchableOpacity,
   TextInput,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NightData, Colors, UserSettings } from '../types';
 import { SleepChart } from '../components/SleepChart';
+import { useSleepData } from '../hooks/useSleepData';
+import { SleepSession, SleepChartDataPoint } from '../types/health';
+import { healthKitService } from '../services/healthKitService';
 
 interface HistoryScreenProps {
   accentColor: string;
@@ -17,51 +22,91 @@ interface HistoryScreenProps {
   settings: UserSettings;
 }
 
-const mockData: NightData[] = [
-  {
-    date: '2023-10-24',
-    day: 'Tuesday, Oct 24',
-    totalSleep: '7h 12m',
-    efficiency: 88,
-    eventsCount: 3,
-    isOpen: false,
-    events: [],
-    journal: [
-      { id: '1', text: 'Woke up feeling refreshed, but had some weird dreams about flying.', timestamp: '07:30 AM' },
-      { id: '2', text: 'Drank a glass of water immediately.', timestamp: '07:35 AM' }
-    ]
-  },
-  {
-    date: '2023-10-23',
-    day: 'Monday, Oct 23',
-    totalSleep: '6h 45m',
-    efficiency: 75,
-    eventsCount: 1,
-    isOpen: false,
-    events: [],
-    journal: []
-  },
-  {
-    date: '2023-10-22',
-    day: 'Sunday, Oct 22',
-    totalSleep: '8h 10m',
-    efficiency: 92,
-    eventsCount: 0,
-    isOpen: false,
-    events: [],
-    journal: [
-      { id: '3', text: 'Went to bed late after watching a movie.', timestamp: '08:00 AM' }
-    ]
-  }
-];
+// Helper to format duration
+const formatDuration = (minutes: number): string => {
+  const hours = Math.floor(minutes / 60);
+  const mins = Math.round(minutes % 60);
+  return `${hours}h ${mins}m`;
+};
+
+// Helper to format date for display
+const formatDay = (date: Date): string => {
+  return date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+  });
+};
+
+// Helper to format date as YYYY-MM-DD
+const formatDateId = (date: Date): string => {
+  return date.toISOString().split('T')[0];
+};
+
+// Convert SleepSession to NightData format
+const sessionToNightData = (session: SleepSession): NightData => ({
+  date: formatDateId(session.date),
+  day: formatDay(session.date),
+  totalSleep: formatDuration(session.summary.totalSleepMinutes),
+  efficiency: Math.round(session.summary.sleepEfficiency),
+  eventsCount: 0,
+  isOpen: false,
+  events: [],
+  journal: [],
+});
 
 export const HistoryScreen: React.FC<HistoryScreenProps> = ({ accentColor, isDark, settings }) => {
   const colors = isDark ? Colors.dark : Colors.light;
-  const [historyData, setHistoryData] = useState(mockData);
+  
+  // HealthKit data
+  const {
+    history,
+    isLoading,
+    error,
+    hasPermission,
+    requestPermission,
+    refreshData,
+  } = useSleepData();
+
+  // Convert HealthKit sessions to NightData and merge with local journal data
+  const [localJournalData, setLocalJournalData] = useState<Record<string, NightData['journal']>>({});
+  
+  const historyData = useMemo(() => {
+    if (history.length === 0) {
+      // Return empty array when no HealthKit data
+      return [];
+    }
+    
+    return history.map((session) => {
+      const nightData = sessionToNightData(session);
+      // Merge any locally stored journal entries
+      if (localJournalData[nightData.date]) {
+        nightData.journal = localJournalData[nightData.date];
+      }
+      return nightData;
+    });
+  }, [history, localJournalData]);
+
   const [selectedNightIndex, setSelectedNightIndex] = useState<number | null>(null);
   
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+
+  // Get chart data for selected night
+  const selectedChartData = useMemo((): SleepChartDataPoint[] | null => {
+    if (selectedNightIndex === null || !history[selectedNightIndex]) {
+      return null;
+    }
+    return healthKitService.sessionToChartData(history[selectedNightIndex]);
+  }, [selectedNightIndex, history]);
+
+  // Get selected session for summary display
+  const selectedSession = useMemo((): SleepSession | null => {
+    if (selectedNightIndex === null || !history[selectedNightIndex]) {
+      return null;
+    }
+    return history[selectedNightIndex];
+  }, [selectedNightIndex, history]);
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
@@ -81,40 +126,61 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({ accentColor, isDar
     return `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
-  const calendarDays = [22, 23, 24, 25, 26, 27, 28];
+  // Calendar helpers
+  const today = new Date();
+  const getCalendarDays = () => {
+    const days = [];
+    for (let i = -3; i <= 3; i++) {
+      const date = new Date(today);
+      date.setDate(date.getDate() + i);
+      days.push(date);
+    }
+    return days;
+  };
+  const calendarDays = getCalendarDays();
   const daysOfWeek = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
   const handleAddNote = () => {
-    if (selectedNightIndex === null) return;
+    if (selectedNightIndex === null || !historyData[selectedNightIndex]) return;
     
-    const newHistory = [...historyData];
+    const nightDate = historyData[selectedNightIndex].date;
     const now = new Date();
     const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     
-    newHistory[selectedNightIndex].journal.push({
+    const newEntry = {
       id: Date.now().toString(),
       text: '',
       timestamp: timeString
-    });
+    };
     
-    setHistoryData(newHistory);
+    setLocalJournalData(prev => ({
+      ...prev,
+      [nightDate]: [...(prev[nightDate] || []), newEntry]
+    }));
   };
 
   const handleUpdateNote = (entryId: string, text: string) => {
-    if (selectedNightIndex === null) return;
-    const newHistory = [...historyData];
-    const entry = newHistory[selectedNightIndex].journal.find(e => e.id === entryId);
-    if (entry) {
-      entry.text = text;
-      setHistoryData(newHistory);
-    }
+    if (selectedNightIndex === null || !historyData[selectedNightIndex]) return;
+    
+    const nightDate = historyData[selectedNightIndex].date;
+    
+    setLocalJournalData(prev => ({
+      ...prev,
+      [nightDate]: (prev[nightDate] || []).map(entry =>
+        entry.id === entryId ? { ...entry, text } : entry
+      )
+    }));
   };
 
   const handleDeleteNote = (entryId: string) => {
-    if (selectedNightIndex === null) return;
-    const newHistory = [...historyData];
-    newHistory[selectedNightIndex].journal = newHistory[selectedNightIndex].journal.filter(e => e.id !== entryId);
-    setHistoryData(newHistory);
+    if (selectedNightIndex === null || !historyData[selectedNightIndex]) return;
+    
+    const nightDate = historyData[selectedNightIndex].date;
+    
+    setLocalJournalData(prev => ({
+      ...prev,
+      [nightDate]: (prev[nightDate] || []).filter(entry => entry.id !== entryId)
+    }));
   };
 
   const handleStartRecording = () => {
@@ -123,23 +189,54 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({ accentColor, isDar
 
   const handleStopRecording = () => {
     setIsRecording(false);
-    if (selectedNightIndex === null) return;
+    if (selectedNightIndex === null || !historyData[selectedNightIndex]) return;
 
-    const newHistory = [...historyData];
+    const nightDate = historyData[selectedNightIndex].date;
     const now = new Date();
     const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     
-    newHistory[selectedNightIndex].journal.push({
+    const newEntry = {
       id: Date.now().toString(),
       text: '🎤 Audio Note (0:15)',
       timestamp: timeString
-    });
-    setHistoryData(newHistory);
+    };
+    
+    setLocalJournalData(prev => ({
+      ...prev,
+      [nightDate]: [...(prev[nightDate] || []), newEntry]
+    }));
   };
 
+  // Permission prompt view
+  if (hasPermission === false) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.listHeader, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+          <View style={styles.headerSpacer} />
+          <Text style={[styles.headerTitle, { color: colors.text }]}>History</Text>
+          <View style={styles.headerSpacer} />
+        </View>
+        <View style={styles.permissionCard}>
+          <Ionicons name="heart" size={48} color={accentColor} />
+          <Text style={[styles.permissionTitle, { color: colors.text }]}>Enable Health Access</Text>
+          <Text style={[styles.permissionText, { color: colors.textSecondary }]}>
+            Allow access to Apple Health to see your real sleep data from your Apple Watch.
+          </Text>
+          <TouchableOpacity
+            style={[styles.permissionButton, { backgroundColor: accentColor }]}
+            onPress={requestPermission}
+          >
+            <Text style={styles.permissionButtonText}>Grant Access</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   // Detail View
-  if (selectedNightIndex !== null) {
+  if (selectedNightIndex !== null && historyData[selectedNightIndex]) {
     const night = historyData[selectedNightIndex];
+    const journalEntries = localJournalData[night.date] || [];
     
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -166,32 +263,65 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({ accentColor, isDar
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Sleep</Text>
               <View style={styles.statValueRow}>
                 <Text style={[styles.statValue, { color: colors.text }]}>{night.totalSleep}</Text>
-                <Text style={styles.statBadge}>+5%</Text>
               </View>
             </View>
             <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Efficiency</Text>
               <View style={styles.statValueRow}>
                 <Text style={[styles.statValue, { color: colors.text }]}>{night.efficiency}%</Text>
-                <Text style={[styles.statNote, { color: colors.textSecondary }]}>Good</Text>
+                <Text style={[styles.statNote, { color: colors.textSecondary }]}>
+                  {night.efficiency >= 85 ? 'Good' : night.efficiency >= 70 ? 'Fair' : 'Low'}
+                </Text>
               </View>
             </View>
           </View>
+
+          {/* Sleep Stages Summary */}
+          {selectedSession && (
+            <View style={[styles.stagesCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.chartTitle, { color: colors.text }]}>Sleep Stages</Text>
+              <View style={styles.stagesGrid}>
+                <View style={styles.stageItem}>
+                  <View style={[styles.stageDot, { backgroundColor: '#2563eb' }]} />
+                  <Text style={[styles.stageLabel, { color: colors.textSecondary }]}>Deep</Text>
+                  <Text style={[styles.stageValue, { color: colors.text }]}>
+                    {formatDuration(selectedSession.summary.deepMinutes)}
+                  </Text>
+                </View>
+                <View style={styles.stageItem}>
+                  <View style={[styles.stageDot, { backgroundColor: '#60a5fa' }]} />
+                  <Text style={[styles.stageLabel, { color: colors.textSecondary }]}>Core</Text>
+                  <Text style={[styles.stageValue, { color: colors.text }]}>
+                    {formatDuration(selectedSession.summary.coreMinutes)}
+                  </Text>
+                </View>
+                <View style={styles.stageItem}>
+                  <View style={[styles.stageDot, { backgroundColor: '#a78bfa' }]} />
+                  <Text style={[styles.stageLabel, { color: colors.textSecondary }]}>REM</Text>
+                  <Text style={[styles.stageValue, { color: colors.text }]}>
+                    {formatDuration(selectedSession.summary.remMinutes)}
+                  </Text>
+                </View>
+                <View style={styles.stageItem}>
+                  <View style={[styles.stageDot, { backgroundColor: '#f97316' }]} />
+                  <Text style={[styles.stageLabel, { color: colors.textSecondary }]}>Awake</Text>
+                  <Text style={[styles.stageValue, { color: colors.text }]}>
+                    {formatDuration(selectedSession.summary.awakeMinutes)}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
 
           {/* Chart */}
           <View style={[styles.chartCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={styles.chartHeader}>
               <Text style={[styles.chartTitle, { color: colors.text }]}>Sleep Cycle</Text>
-              <View style={styles.chartLegend}>
-                <View style={[styles.legendDot, { backgroundColor: accentColor }]} />
-                <Text style={[styles.legendText, { color: colors.textSecondary }]}>Deep Sleep</Text>
-              </View>
             </View>
             <SleepChart 
               accentColor={accentColor} 
-              isDark={isDark} 
-              sleepStartHour={settings.sleepStartHour}
-              sleepDuration={settings.sleepDuration}
+              isDark={isDark}
+              sleepData={selectedChartData}
             />
           </View>
 
@@ -205,7 +335,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({ accentColor, isDar
               <Text style={[styles.journalSubtitle, { color: colors.textSecondary }]}>Private Notes</Text>
             </View>
 
-            {night.journal.map((entry) => (
+            {journalEntries.map((entry) => (
               <View key={entry.id} style={styles.journalEntry}>
                 {entry.text.startsWith('🎤') ? (
                   <View style={[styles.audioNote, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -326,31 +456,33 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({ accentColor, isDar
           <TouchableOpacity>
             <Ionicons name="chevron-back" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
-          <Text style={[styles.calendarMonth, { color: colors.text }]}>October 2023</Text>
+          <Text style={[styles.calendarMonth, { color: colors.text }]}>
+            {today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+          </Text>
           <TouchableOpacity>
             <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
         <View style={styles.calendarDays}>
-          {calendarDays.map((day, i) => {
-            const isActive = day === 24;
+          {calendarDays.map((date, i) => {
+            const isToday = date.toDateString() === today.toDateString();
             return (
-              <TouchableOpacity key={day} style={styles.calendarDay}>
+              <TouchableOpacity key={date.toISOString()} style={styles.calendarDay}>
                 <Text style={[
                   styles.dayLabel,
-                  { color: isActive ? accentColor : colors.textSecondary }
+                  { color: isToday ? accentColor : colors.textSecondary }
                 ]}>
-                  {daysOfWeek[i]}
+                  {daysOfWeek[date.getDay()]}
                 </Text>
                 <View style={[
                   styles.dayNumber,
-                  isActive && { backgroundColor: accentColor }
+                  isToday && { backgroundColor: accentColor }
                 ]}>
                   <Text style={[
                     styles.dayNumberText,
-                    { color: isActive ? '#fff' : colors.textSecondary }
+                    { color: isToday ? '#fff' : colors.textSecondary }
                   ]}>
-                    {day}
+                    {date.getDate()}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -359,36 +491,87 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({ accentColor, isDar
         </View>
       </View>
 
-      {/* Night List */}
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.nightList}
-        showsVerticalScrollIndicator={false}
-      >
-        {historyData.map((night, index) => (
-          <TouchableOpacity 
-            key={night.date}
-            onPress={() => setSelectedNightIndex(index)}
-            style={[styles.nightCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            activeOpacity={0.7}
+      {/* Loading state */}
+      {isLoading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator color={accentColor} size="large" />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+            Loading sleep data...
+          </Text>
+        </View>
+      )}
+
+      {/* Error state */}
+      {error && !isLoading && (
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle" size={48} color="#ef4444" />
+          <Text style={[styles.errorText, { color: colors.text }]}>
+            Unable to load sleep data
+          </Text>
+          <Text style={[styles.errorSubtext, { color: colors.textSecondary }]}>
+            {error}
+          </Text>
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: accentColor }]}
+            onPress={refreshData}
           >
-            <View style={styles.nightInfo}>
-              <Text style={[styles.nightDay, { color: colors.text }]}>{night.day}</Text>
-              <View style={styles.nightMeta}>
-                <Ionicons name="moon" size={14} color={colors.textSecondary} />
-                <Text style={[styles.nightMetaText, { color: colors.textSecondary }]}>
-                  {night.totalSleep} Sleep
-                </Text>
-                <View style={[styles.metaDot, { backgroundColor: colors.textSecondary }]} />
-                <Text style={[styles.nightMetaText, { color: colors.textSecondary }]}>
-                  {night.journal.length > 0 ? `${night.journal.length} Notes` : 'No Notes'}
-                </Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+            <Text style={styles.retryButtonText}>Try Again</Text>
           </TouchableOpacity>
-        ))}
-      </ScrollView>
+        </View>
+      )}
+
+      {/* Empty state */}
+      {!isLoading && !error && historyData.length === 0 && (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="moon-outline" size={48} color={colors.textSecondary} />
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>
+            No sleep data yet
+          </Text>
+          <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
+            Wear your Apple Watch to bed to track your sleep. Data will appear here automatically.
+          </Text>
+        </View>
+      )}
+
+      {/* Night List */}
+      {!isLoading && !error && historyData.length > 0 && (
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.nightList}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isLoading}
+              onRefresh={refreshData}
+              tintColor={accentColor}
+            />
+          }
+        >
+          {historyData.map((night, index) => (
+            <TouchableOpacity 
+              key={night.date}
+              onPress={() => setSelectedNightIndex(index)}
+              style={[styles.nightCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              activeOpacity={0.7}
+            >
+              <View style={styles.nightInfo}>
+                <Text style={[styles.nightDay, { color: colors.text }]}>{night.day}</Text>
+                <View style={styles.nightMeta}>
+                  <Ionicons name="moon" size={14} color={colors.textSecondary} />
+                  <Text style={[styles.nightMetaText, { color: colors.textSecondary }]}>
+                    {night.totalSleep} Sleep
+                  </Text>
+                  <View style={[styles.metaDot, { backgroundColor: colors.textSecondary }]} />
+                  <Text style={[styles.nightMetaText, { color: colors.textSecondary }]}>
+                    {night.efficiency}% Efficiency
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
     </View>
   );
 };
@@ -543,6 +726,37 @@ const styles = StyleSheet.create({
   statNote: {
     fontSize: 12,
     fontWeight: '500',
+  },
+  stagesCard: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  stagesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginTop: 12,
+  },
+  stageItem: {
+    width: '45%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  stageDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  stageLabel: {
+    fontSize: 13,
+    flex: 1,
+  },
+  stageValue: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   chartCard: {
     padding: 16,
@@ -727,5 +941,84 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // Permission, Loading, Error, Empty states
+  permissionCard: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+    gap: 16,
+  },
+  permissionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  permissionText: {
+    fontSize: 15,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  permissionButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  permissionButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 15,
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+    gap: 12,
+  },
+  errorText: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  errorSubtext: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+    gap: 12,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  emptySubtext: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
