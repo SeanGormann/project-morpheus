@@ -1,7 +1,8 @@
 {
   "expo": {
-    "name": "SleepSounds",
-    "slug": "sleepsounds",
+    "name": "Morpheus",
+    "slug": "morpheus",
+    "icon": "./dreamcatcher.png",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
@@ -12,7 +13,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.sleepsounds.app"
+      "bundleIdentifier": "com.morpheus-console",
+      "entitlements": {
+        "com.apple.developer.healthkit": true
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -24,7 +28,10 @@
       "bundler": "metro"
     },
     "plugins": [
-      "react-native-health"
+      ["@kingstinct/react-native-healthkit", {
+        "NSHealthShareUsageDescription": "This app needs access to your sleep data to display your sleep patterns and help you understand your rest quality.",
+        "NSHealthUpdateUsageDescription": "This app does not write health data."
+      }]
     ]
   }
 }

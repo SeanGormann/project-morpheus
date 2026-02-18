@@ -1,0 +1,67 @@
+{
+  "Random Forest": {
+    "accuracy": 0.7518248175182481,
+    "precision": 0.3970893970893971,
+    "recall": 0.4404304381245196,
+    "f1": 0.4176384839650146,
+    "specificity": 0.8306734137796808,
+    "roc_auc": 0.7033575095242185,
+    "train_time_seconds": 0.974359,
+    "n_train_samples": 21652,
+    "n_test_samples": 6439,
+    "cv_roc_auc_mean": 0.7314261582388097,
+    "cv_roc_auc_std": 0.059247797551352316
+  },
+  "XGBoost": {
+    "accuracy": 0.7459232800124243,
+    "precision": 0.35447437011294525,
+    "recall": 0.31360491929285167,
+    "f1": 0.33278955954323003,
+    "specificity": 0.8553912028026469,
+    "roc_auc": 0.669151106628461,
+    "train_time_seconds": 0.350355,
+    "n_train_samples": 21652,
+    "n_test_samples": 6439,
+    "cv_roc_auc_mean": 0.7064971798495833,
+    "cv_roc_auc_std": 0.06556187445691081
+  },
+  "MLP": {
+    "accuracy": 0.7995030284205622,
+    "precision": 0.515527950310559,
+    "recall": 0.12759415833973867,
+    "f1": 0.20455945779420825,
+    "specificity": 0.9696379914363565,
+    "roc_auc": 0.7308449738785239,
+    "train_time_seconds": 3.261984,
+    "n_train_samples": 21652,
+    "n_test_samples": 6439,
+    "cv_roc_auc_mean": 0.7368621791557278,
+    "cv_roc_auc_std": 0.055935913747160865
+  },
+  "Logistic Regression": {
+    "accuracy": 0.642491070041932,
+    "precision": 0.30683133925125433,
+    "recall": 0.6110684089162183,
+    "f1": 0.408530318602261,
+    "specificity": 0.6504476449980537,
+    "roc_auc": 0.6717693878021188,
+    "train_time_seconds": 0.071051,
+    "n_train_samples": 21652,
+    "n_test_samples": 6439,
+    "cv_roc_auc_mean": 0.6678978513162097,
+    "cv_roc_auc_std": 0.03424682549023613
+  },
+  "Gaussian NB": {
+    "accuracy": 0.4713464823730393,
+    "precision": 0.2571032571032571,
+    "recall": 0.8554957724827056,
+    "f1": 0.39538188277087033,
+    "specificity": 0.37407551576488907,
+    "roc_auc": 0.6913310987236514,
+    "train_time_seconds": 0.007258,
+    "n_train_samples": 21652,
+    "n_test_samples": 6439,
+    "cv_roc_auc_mean": 0.6615178387509479,
+    "cv_roc_auc_std": 0.06804058052009263
+  }
+}

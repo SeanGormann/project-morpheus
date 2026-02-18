@@ -1,0 +1,1 @@
+uv run components/reader/apple_watch/run_phase2.py --skip-create

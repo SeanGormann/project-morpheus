@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>SchemeUserState</key>
+	<dict>
+		<key>DreamApp Watch App.xcscheme_^#shared#^_</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>1</integer>
+		</dict>
+		<key>DreamApp.xcscheme_^#shared#^_</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>0</integer>
+		</dict>
+	</dict>
+	<key>SuppressBuildableAutocreation</key>
+	<dict>
+		<key>8731F9512A3AE118004CC53B</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>8731F9612A3AE11B004CC53B</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>8731F96B2A3AE11B004CC53B</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>8731F9772A3AE11B004CC53B</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>8731F9892A3AE11C004CC53B</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>8731F9932A3AE11C004CC53B</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+	</dict>
+</dict>
+</plist>

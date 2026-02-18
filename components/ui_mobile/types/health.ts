@@ -83,7 +83,11 @@ export interface UseSleepDataReturn {
   chartData: SleepChartDataPoint[] | null;
   // Loading states
   isLoading: boolean;
+  isLoadingMore: boolean;
   isInitialized: boolean;
+  // Pagination
+  loadedDays: number;
+  hasMoreData: boolean;
   // Error handling
   error: string | null;
   // Permission status
@@ -91,6 +95,7 @@ export interface UseSleepDataReturn {
   // Actions
   requestPermission: () => Promise<boolean>;
   refreshData: () => Promise<void>;
+  loadMore: () => Promise<void>;
   fetchDateRange: (range: DateRange) => Promise<SleepSession[]>;
 }
 

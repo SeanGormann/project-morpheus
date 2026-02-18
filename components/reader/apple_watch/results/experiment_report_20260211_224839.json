@@ -1,0 +1,77 @@
+{
+  "summary": [
+    {
+      "variant": "baseline",
+      "model": "Logistic Regression",
+      "test_roc_auc": 0.5696775154842413,
+      "test_recall": 0.40507302075326673,
+      "test_precision": 0.27164948453608245,
+      "cv_roc_auc": 0.4964312386275056,
+      "cv_test_gap": -0.07324627685673568
+    },
+    {
+      "variant": "full",
+      "model": "Mlp",
+      "test_roc_auc": 0.7308449738785239,
+      "test_recall": 0.12759415833973867,
+      "test_precision": 0.515527950310559,
+      "cv_roc_auc": 0.7368621791557278,
+      "cv_test_gap": 0.006017205277203952
+    },
+    {
+      "variant": "full_circadian",
+      "model": "Mlp",
+      "test_roc_auc": 0.704111189135285,
+      "test_recall": 0.25595695618754805,
+      "test_precision": 0.4506089309878214,
+      "cv_roc_auc": 0.6787943158961887,
+      "cv_test_gap": -0.02531687323909637
+    }
+  ],
+  "pivot_roc_auc": {
+    "baseline": {
+      "Gaussian Nb": 0.5652603066958405,
+      "Logistic Regression": 0.5696775154842413,
+      "Mlp": 0.4469590867760794,
+      "Random Forest": 0.5552471240346004,
+      "Xgboost": 0.4868397038060072
+    },
+    "full": {
+      "Gaussian Nb": 0.6913310987236514,
+      "Logistic Regression": 0.6717693878021188,
+      "Mlp": 0.7308449738785239,
+      "Random Forest": 0.7033575095242185,
+      "Xgboost": 0.669151106628461
+    },
+    "full_circadian": {
+      "Gaussian Nb": 0.6703280017257738,
+      "Logistic Regression": 0.6476980159287,
+      "Mlp": 0.704111189135285,
+      "Random Forest": 0.6858263054230525,
+      "Xgboost": 0.6632366365484047
+    }
+  },
+  "pivot_cv_auc": {
+    "baseline": {
+      "Gaussian Nb": 0.5571059790361612,
+      "Logistic Regression": 0.4964312386275056,
+      "Mlp": 0.5713082446451441,
+      "Random Forest": 0.5140763704419793,
+      "Xgboost": 0.4808092304325262
+    },
+    "full": {
+      "Gaussian Nb": 0.6615178387509479,
+      "Logistic Regression": 0.6678978513162097,
+      "Mlp": 0.7368621791557278,
+      "Random Forest": 0.7314261582388097,
+      "Xgboost": 0.7064971798495833
+    },
+    "full_circadian": {
+      "Gaussian Nb": 0.6737523850510362,
+      "Logistic Regression": 0.6629185935711197,
+      "Mlp": 0.6787943158961887,
+      "Random Forest": 0.715090835528412,
+      "Xgboost": 0.6781519267679336
+    }
+  }
+}

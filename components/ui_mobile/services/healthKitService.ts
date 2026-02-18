@@ -1,13 +1,15 @@
 /**
  * HealthKit Service
  * 
- * Wraps react-native-health and provides clean async/Promise APIs
- * for accessing Apple Health sleep data.
+ * Uses @kingstinct/react-native-healthkit for Apple Health sleep data.
+ * This library has better support for React Native's New Architecture.
  */
 
-import AppleHealthKit, {
-  HealthKitPermissions,
-} from 'react-native-health';
+import Healthkit, {
+  CategoryValueSleepAnalysis,
+} from '@kingstinct/react-native-healthkit';
+import type { CategorySampleTyped } from '@kingstinct/react-native-healthkit';
+
 import {
   HealthKitSleepSample,
   SleepStage,
@@ -18,64 +20,83 @@ import {
   DateRange,
 } from '../types/health';
 
-// Permissions we need
-const HEALTH_PERMISSIONS: HealthKitPermissions = {
-  permissions: {
-    read: [AppleHealthKit.Constants.Permissions.SleepAnalysis],
-    write: [], // We're only reading
-  },
+// Sleep analysis category type identifier
+const SLEEP_ANALYSIS = 'HKCategoryTypeIdentifierSleepAnalysis' as const;
+
+// Map HealthKit sleep values to our enum
+const mapSleepValue = (value: CategoryValueSleepAnalysis): SleepStage => {
+  switch (value) {
+    case CategoryValueSleepAnalysis.inBed:
+      return SleepStage.InBed;
+    case CategoryValueSleepAnalysis.asleepCore:
+      return SleepStage.Core;
+    case CategoryValueSleepAnalysis.asleepDeep:
+      return SleepStage.Deep;
+    case CategoryValueSleepAnalysis.asleepREM:
+      return SleepStage.REM;
+    case CategoryValueSleepAnalysis.awake:
+      return SleepStage.Awake;
+    case CategoryValueSleepAnalysis.asleepUnspecified:
+    default:
+      return SleepStage.Asleep;
+  }
 };
 
-// Map HealthKit values to our enum
-const SLEEP_VALUE_MAP: Record<string, SleepStage> = {
-  INBED: SleepStage.InBed,
-  ASLEEP: SleepStage.Asleep,
-  AWAKE: SleepStage.Awake,
-  CORE: SleepStage.Core,
-  DEEP: SleepStage.Deep,
-  REM: SleepStage.REM,
-};
-
-// Depth values for chart visualization
+// Depth values for chart visualization (higher = higher on chart)
+// Awake at top, Deep at bottom (inverted from traditional hypnogram)
 const STAGE_DEPTH: Record<SleepStage, number> = {
-  [SleepStage.Awake]: 0,
-  [SleepStage.InBed]: 15,
-  [SleepStage.REM]: 40,
-  [SleepStage.Core]: 65,
-  [SleepStage.Asleep]: 70, // Generic "asleep" if no stages
-  [SleepStage.Deep]: 100,
+  [SleepStage.Awake]: 100,
+  [SleepStage.InBed]: 85,
+  [SleepStage.REM]: 60,
+  [SleepStage.Core]: 35,
+  [SleepStage.Asleep]: 30,
+  [SleepStage.Deep]: 0,
 };
 
 class HealthKitService {
   private initialized = false;
 
   /**
-   * Initialize HealthKit and request permissions
+   * Check if HealthKit is available on this device
    */
-  async initialize(): Promise<boolean> {
-    return new Promise((resolve) => {
-      AppleHealthKit.initHealthKit(HEALTH_PERMISSIONS, (error) => {
-        if (error) {
-          console.error('HealthKit init error:', error);
-          this.initialized = false;
-          resolve(false);
-        } else {
-          this.initialized = true;
-          resolve(true);
-        }
-      });
-    });
+  async isAvailable(): Promise<boolean> {
+    console.log('[HealthKitService] isAvailable called');
+    try {
+      const available = await Healthkit.isHealthDataAvailable();
+      console.log('[HealthKitService] isAvailable result:', available);
+      return available;
+    } catch (err) {
+      console.log('[HealthKitService] isAvailable error:', err);
+      return false;
+    }
   }
 
   /**
-   * Check if HealthKit is available on this device
+   * Initialize HealthKit and request permissions
    */
-  isAvailable(): Promise<boolean> {
-    return new Promise((resolve) => {
-      AppleHealthKit.isAvailable((error, available) => {
-        resolve(!error && available);
+  async initialize(): Promise<boolean> {
+    console.log('[HealthKitService] initialize called');
+    
+    try {
+      console.log('[HealthKitService] About to request authorization...');
+      console.log('[HealthKitService] SLEEP_ANALYSIS:', SLEEP_ANALYSIS);
+      console.log('[HealthKitService] Healthkit.requestAuthorization:', typeof Healthkit.requestAuthorization);
+      
+      // Request authorization for sleep data - toRead for reading sleep data
+      const result = await Healthkit.requestAuthorization({
+        toRead: [SLEEP_ANALYSIS],
       });
-    });
+      
+      console.log('[HealthKitService] Authorization result:', result);
+      this.initialized = true;
+      return true;
+    } catch (err: any) {
+      console.log('[HealthKitService] initialize error:', err);
+      console.log('[HealthKitService] error message:', err?.message);
+      console.log('[HealthKitService] error stack:', err?.stack);
+      this.initialized = false;
+      return false;
+    }
   }
 
   /**
@@ -86,31 +107,35 @@ class HealthKitService {
       throw new Error('HealthKit not initialized. Call initialize() first.');
     }
 
-    return new Promise((resolve, reject) => {
-      const options = {
-        startDate: range.startDate.toISOString(),
-        endDate: range.endDate.toISOString(),
-        ascending: true,
-      };
-
-      AppleHealthKit.getSleepSamples(options, (error, results) => {
-        if (error) {
-          reject(new Error(`Failed to get sleep samples: ${error}`));
-          return;
+    try {
+      const samples = await Healthkit.queryCategorySamples(
+        SLEEP_ANALYSIS,
+        {
+          limit: 0, // 0 or negative means no limit
+          ascending: true,
+          filter: {
+            date: {
+              startDate: range.startDate,
+              endDate: range.endDate,
+            },
+          },
         }
+      );
 
-        const samples: HealthKitSleepSample[] = (results || []).map((sample: any) => ({
-          id: sample.id || `${sample.startDate}-${sample.endDate}`,
-          startDate: sample.startDate,
-          endDate: sample.endDate,
-          value: SLEEP_VALUE_MAP[sample.value] || SleepStage.Asleep,
-          sourceId: sample.sourceId || '',
-          sourceName: sample.sourceName || 'Unknown',
-        }));
+      console.log('[HealthKitService] Got sleep samples:', samples.length);
 
-        resolve(samples);
-      });
-    });
+      return samples.map((sample: any) => ({
+        id: sample.uuid,
+        startDate: sample.startDate,
+        endDate: sample.endDate,
+        value: mapSleepValue(sample.value as CategoryValueSleepAnalysis),
+        sourceId: sample.sourceRevision?.source?.bundleIdentifier || '',
+        sourceName: sample.sourceRevision?.source?.name || 'Unknown',
+      }));
+    } catch (err) {
+      console.log('[HealthKitService] getSleepSamples error:', err);
+      throw err;
+    }
   }
 
   /**
@@ -120,7 +145,7 @@ class HealthKitService {
     const now = new Date();
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(18, 0, 0, 0); // Start from 6 PM yesterday
+    yesterday.setHours(18, 0, 0, 0);
 
     const samples = await this.getSleepSamples({
       startDate: yesterday,
@@ -181,12 +206,10 @@ class HealthKitService {
   ): SleepSession | null {
     if (samples.length === 0) return null;
 
-    // Sort by start time
     const sorted = [...samples].sort(
       (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
     );
 
-    // Build segments
     const segments: SleepSegment[] = sorted.map((sample) => {
       const start = new Date(sample.startDate);
       const end = new Date(sample.endDate);
@@ -198,7 +221,6 @@ class HealthKitService {
       };
     });
 
-    // Calculate summary
     const summary = this.calculateSummary(segments);
 
     const bedTime = segments[0].startTime;
@@ -250,7 +272,6 @@ class HealthKitService {
           summary.totalSleepMinutes += segment.durationMinutes;
           break;
         case SleepStage.InBed:
-          // Don't count as sleep
           break;
       }
     }
@@ -270,7 +291,6 @@ class HealthKitService {
     const points: SleepChartDataPoint[] = [];
 
     for (const segment of session.segments) {
-      // Add point at segment start
       points.push({
         time: segment.startTime,
         timeLabel: this.formatTimeLabel(segment.startTime),
@@ -278,7 +298,6 @@ class HealthKitService {
         depthValue: STAGE_DEPTH[segment.stage],
       });
 
-      // Add point just before segment ends (to create step effect)
       const justBefore = new Date(segment.endTime.getTime() - 1000);
       points.push({
         time: justBefore,
@@ -307,9 +326,5 @@ class HealthKitService {
   }
 }
 
-// Export singleton instance
 export const healthKitService = new HealthKitService();
-
-// Export class for testing
 export { HealthKitService };
-

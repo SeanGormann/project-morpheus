@@ -62,10 +62,14 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({ accentColor, isDar
   const {
     history,
     isLoading,
+    isLoadingMore,
     error,
     hasPermission,
+    hasMoreData,
+    loadedDays,
     requestPermission,
     refreshData,
+    loadMore,
   } = useSleepData();
 
   // Convert HealthKit sessions to NightData and merge with local journal data
@@ -266,11 +270,11 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({ accentColor, isDar
               </View>
             </View>
             <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Efficiency</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Time Asleep</Text>
               <View style={styles.statValueRow}>
                 <Text style={[styles.statValue, { color: colors.text }]}>{night.efficiency}%</Text>
                 <Text style={[styles.statNote, { color: colors.textSecondary }]}>
-                  {night.efficiency >= 85 ? 'Good' : night.efficiency >= 70 ? 'Fair' : 'Low'}
+                  of time in bed
                 </Text>
               </View>
             </View>
@@ -563,13 +567,34 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({ accentColor, isDar
                   </Text>
                   <View style={[styles.metaDot, { backgroundColor: colors.textSecondary }]} />
                   <Text style={[styles.nightMetaText, { color: colors.textSecondary }]}>
-                    {night.efficiency}% Efficiency
+                    {night.efficiency}% asleep
                   </Text>
                 </View>
               </View>
               <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
           ))}
+
+          {/* Load More Button */}
+          {hasMoreData && (
+            <TouchableOpacity
+              onPress={loadMore}
+              disabled={isLoadingMore}
+              style={[styles.loadMoreButton, { borderColor: colors.border }]}
+              activeOpacity={0.7}
+            >
+              {isLoadingMore ? (
+                <ActivityIndicator size="small" color={accentColor} />
+              ) : (
+                <>
+                  <Ionicons name="time-outline" size={18} color={colors.textSecondary} />
+                  <Text style={[styles.loadMoreText, { color: colors.textSecondary }]}>
+                    Load More ({loadedDays} days loaded)
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
         </ScrollView>
       )}
     </View>
@@ -690,6 +715,22 @@ const styles = StyleSheet.create({
     width: 4,
     height: 4,
     borderRadius: 2,
+  },
+  loadMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    marginTop: 4,
+    marginBottom: 24,
+  },
+  loadMoreText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
   statsGrid: {
     flexDirection: 'row',

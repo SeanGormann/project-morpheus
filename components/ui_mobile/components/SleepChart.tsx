@@ -105,15 +105,24 @@ export const SleepChart: React.FC<SleepChartProps> = ({
         time: d.time,
       }));
 
-      // Create step-like path for sleep stages
+      // Create step-like paths for each sleep stage (colored segments)
       let linePath = '';
+      const coloredSegments: { path: string; color: string }[] = [];
+      
       for (let i = 0; i < points.length; i++) {
         const point = points[i];
         if (i === 0) {
           linePath = `M ${point.x} ${point.y}`;
         } else {
           const prev = points[i - 1];
-          // Use step-like transitions for sleep stages
+          // Create colored segment for the horizontal line
+          const segmentPath = `M ${prev.x} ${prev.y} L ${point.x} ${prev.y}`;
+          coloredSegments.push({ path: segmentPath, color: STAGE_COLORS[prev.stage] });
+          
+          // Create colored segment for the vertical transition
+          const transitionPath = `M ${point.x} ${prev.y} L ${point.x} ${point.y}`;
+          coloredSegments.push({ path: transitionPath, color: STAGE_COLORS[point.stage] });
+          
           linePath += ` L ${point.x} ${prev.y} L ${point.x} ${point.y}`;
         }
       }
@@ -131,12 +140,7 @@ export const SleepChart: React.FC<SleepChartProps> = ({
           label: formatTime(d.time),
         }));
 
-      // Find deepest sleep point for highlight
-      const deepestPoint = points.reduce((max, p) =>
-        p.y < max.y ? p : max, points[0]
-      );
-
-      return { linePath, areaPath, points, timeLabels, deepestPoint, isRealData: true };
+      return { linePath, areaPath, points, timeLabels, coloredSegments, isRealData: true };
     } else {
       // Legacy mock data mode
       const numDataPoints = 11;
@@ -250,7 +254,7 @@ export const SleepChart: React.FC<SleepChartProps> = ({
         <View style={styles.legend}>
           {[SleepStage.Deep, SleepStage.Core, SleepStage.REM, SleepStage.Awake].map((stage) => (
             <View key={stage} style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: STAGE_COLORS[stage] }]} />
+              <View style={[styles.legendBar, { backgroundColor: STAGE_COLORS[stage] }]} />
               <Text style={[styles.legendText, { color: isDark ? '#94a3b8' : '#64748b' }]}>
                 {STAGE_LABELS[stage]}
               </Text>
@@ -272,7 +276,7 @@ export const SleepChart: React.FC<SleepChartProps> = ({
           </LinearGradient>
         </Defs>
 
-        {/* Y-axis labels for real data mode */}
+        {/* Y-axis labels for real data mode - Awake at top, Deep at bottom */}
         {chartElements.isRealData && (
           <>
             <SvgText
@@ -281,7 +285,7 @@ export const SleepChart: React.FC<SleepChartProps> = ({
               fontSize={9}
               fill={isDark ? '#64748b' : '#94a3b8'}
             >
-              Deep
+              Awake
             </SvgText>
             <SvgText
               x={padding.left}
@@ -289,7 +293,7 @@ export const SleepChart: React.FC<SleepChartProps> = ({
               fontSize={9}
               fill={isDark ? '#64748b' : '#94a3b8'}
             >
-              Awake
+              Deep
             </SvgText>
           </>
         )}
@@ -335,16 +339,30 @@ export const SleepChart: React.FC<SleepChartProps> = ({
         {/* Area fill */}
         <Path d={areaPath} fill={chartElements.isRealData ? "url(#sleepGradient)" : "url(#areaGradient)"} />
 
-        {/* Line stroke */}
-        <Path
-          d={linePath}
-          stroke={chartElements.isRealData ? accentColor : "#92b7c9"}
-          strokeWidth={2}
-          fill="none"
-          strokeLinejoin="round"
-        />
+        {/* Line stroke - colored segments for real data, single color for mock */}
+        {chartElements.isRealData && chartElements.coloredSegments ? (
+          // Render each segment with its own color
+          chartElements.coloredSegments.map((segment, i) => (
+            <Path
+              key={i}
+              d={segment.path}
+              stroke={segment.color}
+              strokeWidth={2.5}
+              fill="none"
+              strokeLinecap="round"
+            />
+          ))
+        ) : (
+          <Path
+            d={linePath}
+            stroke="#92b7c9"
+            strokeWidth={2}
+            fill="none"
+            strokeLinejoin="round"
+          />
+        )}
 
-        {/* Accent dots for mock mode */}
+        {/* Accent dots for mock mode only */}
         {!chartElements.isRealData && chartElements.refLine1X && chartElements.points && (
           <>
             <Circle
@@ -360,18 +378,6 @@ export const SleepChart: React.FC<SleepChartProps> = ({
               fill={accentColor}
             />
           </>
-        )}
-
-        {/* Highlight deepest sleep point for real data mode */}
-        {chartElements.isRealData && chartElements.deepestPoint && (
-          <Circle
-            cx={chartElements.deepestPoint.x}
-            cy={chartElements.deepestPoint.y}
-            r={5}
-            fill={STAGE_COLORS[SleepStage.Deep]}
-            stroke="#fff"
-            strokeWidth={2}
-          />
         )}
 
         {/* X-axis time labels */}
@@ -414,10 +420,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  legendBar: {
+    width: 16,
+    height: 3,
+    borderRadius: 1.5,
   },
   legendText: {
     fontSize: 10,
