@@ -8,3 +8,9 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Data files
+sleep_visualizations/
+rem_detection/
+export.zip
+apple_health_export/

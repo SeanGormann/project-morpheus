@@ -19,6 +19,13 @@ This script extracts and visualizes your sleep data from Apple Health.
 3. **Place the export file:**
    - Put `export.zip` in the same directory as this script
 
+To get the export from iphone:
+- Go to health App on phone
+- Click account icon on top right
+- Scroll to bottom and click "Export All Health Data"
+- Airdrop to laptop and place here.
+
+
 ## Usage
 
 Run the script:
